@@ -110,16 +110,22 @@ func StartServer() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	
-	fmt.Println("\n🛑 Graceful shutdown...")
+	fmt.Println("\n🛑 Graceful shutdown initiated...")
 	
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 	
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("Ошибка при остановке сервера: %v", err)
+	fmt.Println("   Closing WebSocket connections...")
+	hub.Shutdown()
+	
+	fmt.Println("   Stopping HTTP server...")
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("❌ Server shutdown error: %v", err)
+	} else {
+		fmt.Println("✅ Server stopped gracefully")
 	}
 	
-	fmt.Println("✅ Сервер остановлен")
+	fmt.Println("👋 Goodbye!")
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {

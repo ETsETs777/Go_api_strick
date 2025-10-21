@@ -51,20 +51,24 @@ This project includes examples and demonstrations of the following Go features:
 ### 7. **HTTP Server** (`server/`)
 - REST API with Gorilla Mux
 - WebSocket for real-time communication
-- Rate Limiting (10 req/s)
-- CORS middleware
-- Security Headers
-- Graceful Shutdown
-- Structured Logging
+- **Rate Limiting** (10 req/s with burst of 20)
+- **CORS** middleware for cross-origin requests
+- **Security Headers** (CSP, HSTS, X-Frame-Options, etc.)
+- **Graceful Shutdown** with connection cleanup
+- **Structured Logging** with request tracking
+- **Request Timeout** middleware (30s)
+- **Response Size Tracking**
+- **Panic Recovery** with detailed error logging
+- **Input Validation**
 - JSON encoding/decoding
-- Beautiful monochrome web interface
+- Beautiful monochrome web interface with advanced animations
 
 ### 8. **Advanced Concurrency Patterns** (`advanced/`)
-- Pipeline Pattern
-- Fan-Out/Fan-In Pattern
-- Circuit Breaker Pattern
-- Semaphore Pattern
-- In-Memory Cache with TTL
+- **Pipeline Pattern** - sequential data processing
+- **Fan-Out/Fan-In Pattern** - parallel task distribution
+- **Circuit Breaker Pattern** - fault tolerance
+- **Semaphore Pattern** - resource limiting
+- **In-Memory Cache with TTL** - performance optimization
 
 ### 9. **Other Features** (`main.go`)
 - Defer, panic, recover
@@ -215,7 +219,11 @@ go-showcase/
 - ✅ Mutexes and synchronization
 - ✅ Generics (Go 1.18+)
 - ✅ Reflection
-- ✅ Context
+- ✅ Context with timeout and cancellation
+- ✅ Advanced middleware patterns
+- ✅ WebSocket communication
+- ✅ Rate limiting and throttling
+- ✅ Request timeout handling
 
 ### Practical Applications
 - ✅ HTTP server with REST API

@@ -124,6 +124,28 @@ func (h *Hub) GetStats() map[string]interface{} {
 	}
 }
 
+func (h *Hub) Shutdown() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	
+	shutdownMsg := Message{
+		Type: "shutdown",
+		Data: map[string]interface{}{
+			"message": "Server is shutting down gracefully",
+		},
+		Timestamp: time.Now(),
+	}
+	
+	for client := range h.clients {
+		client.Send <- shutdownMsg
+		close(client.Send)
+		client.Conn.Close()
+	}
+	
+	h.clients = make(map[*Client]bool)
+	fmt.Printf("WebSocket: All clients disconnected\n")
+}
+
 func (c *Client) ReadPump(hub *Hub) {
 	defer func() {
 		hub.unregister <- c

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
@@ -58,7 +59,10 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		limiter := rl.GetLimiter(ip)
 		
 		if !limiter.Allow() {
-			http.Error(w, "Слишком много запросов. Попробуйте позже.", http.StatusTooManyRequests)
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			fmt.Fprintf(w, `{"error": "Rate limit exceeded. Please try again later."}`)
 			return
 		}
 		
@@ -86,6 +90,26 @@ type RequestLogger struct {
 	counter int
 }
 
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+	size   int
+}
+
+func (rw *responseWriter) WriteHeader(status int) {
+	rw.status = status
+	rw.ResponseWriter.WriteHeader(status)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	if rw.status == 0 {
+		rw.status = http.StatusOK
+	}
+	size, err := rw.ResponseWriter.Write(b)
+	rw.size += size
+	return size, err
+}
+
 func NewRequestLogger() *RequestLogger {
 	return &RequestLogger{}
 }
@@ -99,13 +123,17 @@ func (rl *RequestLogger) Middleware(next http.Handler) http.Handler {
 		requestID := rl.counter
 		rl.mu.Unlock()
 		
-		fmt.Printf("[%d] %s %s %s - Started\n", 
-			requestID, time.Now().Format("15:04:05"), r.Method, r.RequestURI)
+		rw := &responseWriter{ResponseWriter: w, status: 0}
 		
-		next.ServeHTTP(w, r)
+		fmt.Printf("→ [%d] %s %s %s %s - Started\n", 
+			requestID, time.Now().Format("15:04:05"), r.Method, r.RequestURI, r.RemoteAddr)
 		
-		fmt.Printf("[%d] %s %s %s - Completed in %v\n", 
-			requestID, time.Now().Format("15:04:05"), r.Method, r.RequestURI, time.Since(start))
+		next.ServeHTTP(rw, r)
+		
+		duration := time.Since(start)
+		fmt.Printf("← [%d] %s %s %s - %d %s (%d bytes) - %v\n", 
+			requestID, time.Now().Format("15:04:05"), r.Method, r.RequestURI, 
+			rw.status, http.StatusText(rw.status), rw.size, duration)
 	})
 }
 
@@ -113,8 +141,12 @@ func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				fmt.Printf("PANIC: %v\n", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				fmt.Printf("🚨 PANIC RECOVERED: %v\n", err)
+				fmt.Printf("   URL: %s %s\n", r.Method, r.RequestURI)
+				fmt.Printf("   Remote: %s\n", r.RemoteAddr)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, `{"error": "Internal server error occurred"}`)
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -127,6 +159,42 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://fonts.gstatic.com")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func Timeout(duration time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), duration)
+			defer cancel()
+			
+			r = r.WithContext(ctx)
+			
+			done := make(chan struct{})
+			go func() {
+				next.ServeHTTP(w, r)
+				close(done)
+			}()
+			
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusGatewayTimeout)
+				fmt.Fprintf(w, `{"error": "Request timeout"}`)
+			}
+		})
+	}
+}
+
+func Compress(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "Accept-Encoding")
 		next.ServeHTTP(w, r)
 	})
 }
