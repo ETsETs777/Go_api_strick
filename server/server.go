@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,7 +27,32 @@ type User struct {
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
+	Age       int       `json:"age,omitempty"`
+	Country   string    `json:"country,omitempty"`
+	Active    bool      `json:"active"`
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type PaginatedResponse struct {
+	Data       []User `json:"data"`
+	Page       int    `json:"page"`
+	PerPage    int    `json:"per_page"`
+	Total      int    `json:"total"`
+	TotalPages int    `json:"total_pages"`
+}
+
+type BatchCreateRequest struct {
+	Users []struct {
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Age     int    `json:"age,omitempty"`
+		Country string `json:"country,omitempty"`
+	} `json:"users"`
+}
+
+type BatchDeleteRequest struct {
+	IDs []int `json:"ids"`
 }
 
 type Store struct {
@@ -36,9 +63,12 @@ type Store struct {
 }
 
 type Stats struct {
-	TotalRequests int       `json:"total_requests"`
-	StartTime     time.Time `json:"start_time"`
-	Uptime        string    `json:"uptime"`
+	TotalRequests   int            `json:"total_requests"`
+	TotalUsers      int            `json:"total_users"`
+	ActiveUsers     int            `json:"active_users"`
+	UsersByCountry  map[string]int `json:"users_by_country"`
+	StartTime       time.Time      `json:"start_time"`
+	Uptime          string         `json:"uptime"`
 }
 
 var store = &Store{
@@ -78,10 +108,16 @@ func StartServer() {
 	
 	router.HandleFunc("/api/users", getUsers).Methods("GET")
 	router.HandleFunc("/api/users", createUser).Methods("POST")
+	router.HandleFunc("/api/users/batch", batchCreateUsers).Methods("POST")
+	router.HandleFunc("/api/users/batch", batchDeleteUsers).Methods("DELETE")
+	router.HandleFunc("/api/users/search", searchUsers).Methods("GET")
 	router.HandleFunc("/api/users/{id}", getUser).Methods("GET")
 	router.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")
+	router.HandleFunc("/api/users/{id}/activate", activateUser).Methods("PATCH")
+	router.HandleFunc("/api/users/{id}/deactivate", deactivateUser).Methods("PATCH")
 	router.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE")
 	router.HandleFunc("/api/stats", getStats).Methods("GET")
+	router.HandleFunc("/api/health", healthCheck).Methods("GET")
 	router.HandleFunc("/ws", handleWebSocket)
 	router.HandleFunc("/", homeHandler).Methods("GET")
 	
@@ -974,12 +1010,54 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 	
-	users := make([]User, 0, len(store.users))
-	for _, user := range store.users {
-		users = append(users, user)
+	page := 1
+	perPage := 10
+	
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
 	}
 	
-	respondJSON(w, http.StatusOK, users)
+	if perPageStr := r.URL.Query().Get("per_page"); perPageStr != "" {
+		if pp, err := strconv.Atoi(perPageStr); err == nil && pp > 0 && pp <= 100 {
+			perPage = pp
+		}
+	}
+	
+	allUsers := make([]User, 0, len(store.users))
+	for _, user := range store.users {
+		allUsers = append(allUsers, user)
+	}
+	
+	total := len(allUsers)
+	totalPages := (total + perPage - 1) / perPage
+	
+	start := (page - 1) * perPage
+	end := start + perPage
+	
+	if start >= total {
+		respondJSON(w, http.StatusOK, PaginatedResponse{
+			Data:       []User{},
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		})
+		return
+	}
+	
+	if end > total {
+		end = total
+	}
+	
+	respondJSON(w, http.StatusOK, PaginatedResponse{
+		Data:       allUsers[start:end],
+		Page:       page,
+		PerPage:    perPage,
+		Total:      total,
+		TotalPages: totalPages,
+	})
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) {
@@ -1004,26 +1082,44 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 
 func createUser(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Age     int    `json:"age,omitempty"`
+		Country string `json:"country,omitempty"`
 	}
 	
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondError(w, http.StatusBadRequest, "Неверный формат JSON")
+		respondError(w, http.StatusBadRequest, "Invalid JSON format")
 		return
 	}
 	
 	if input.Name == "" || input.Email == "" {
-		respondError(w, http.StatusBadRequest, "Имя и email обязательны")
+		respondError(w, http.StatusBadRequest, "Name and email are required")
 		return
 	}
 	
+	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
+	if !emailRegex.MatchString(strings.ToLower(input.Email)) {
+		respondError(w, http.StatusBadRequest, "Invalid email format")
+		return
+	}
+	
+	if input.Age < 0 || input.Age > 150 {
+		respondError(w, http.StatusBadRequest, "Age must be between 0 and 150")
+		return
+	}
+	
+	now := time.Now()
 	store.mu.Lock()
 	user := User{
 		ID:        store.nextID,
 		Name:      input.Name,
 		Email:     input.Email,
-		CreatedAt: time.Now(),
+		Age:       input.Age,
+		Country:   input.Country,
+		Active:    true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	store.users[store.nextID] = user
 	store.nextID++
@@ -1044,17 +1140,19 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Неверный ID")
+		respondError(w, http.StatusBadRequest, "Invalid ID")
 		return
 	}
 	
 	var input struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Name    string `json:"name,omitempty"`
+		Email   string `json:"email,omitempty"`
+		Age     *int   `json:"age,omitempty"`
+		Country string `json:"country,omitempty"`
 	}
 	
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondError(w, http.StatusBadRequest, "Неверный формат JSON")
+		respondError(w, http.StatusBadRequest, "Invalid JSON format")
 		return
 	}
 	
@@ -1062,7 +1160,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	user, exists := store.users[id]
 	if !exists {
 		store.mu.Unlock()
-		respondError(w, http.StatusNotFound, "Пользователь не найден")
+		respondError(w, http.StatusNotFound, "User not found")
 		return
 	}
 	
@@ -1070,8 +1168,27 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 		user.Name = input.Name
 	}
 	if input.Email != "" {
+		emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
+		if !emailRegex.MatchString(strings.ToLower(input.Email)) {
+			store.mu.Unlock()
+			respondError(w, http.StatusBadRequest, "Invalid email format")
+			return
+		}
 		user.Email = input.Email
 	}
+	if input.Age != nil {
+		if *input.Age < 0 || *input.Age > 150 {
+			store.mu.Unlock()
+			respondError(w, http.StatusBadRequest, "Age must be between 0 and 150")
+			return
+		}
+		user.Age = *input.Age
+	}
+	if input.Country != "" {
+		user.Country = input.Country
+	}
+	
+	user.UpdatedAt = time.Now()
 	store.users[id] = user
 	store.mu.Unlock()
 	
@@ -1102,8 +1219,22 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 
 func getStats(w http.ResponseWriter, r *http.Request) {
 	store.mu.RLock()
+	
 	stats := store.stats
 	stats.Uptime = time.Since(stats.StartTime).Round(time.Second).String()
+	stats.TotalUsers = len(store.users)
+	stats.ActiveUsers = 0
+	stats.UsersByCountry = make(map[string]int)
+	
+	for _, user := range store.users {
+		if user.Active {
+			stats.ActiveUsers++
+		}
+		if user.Country != "" {
+			stats.UsersByCountry[user.Country]++
+		}
+	}
+	
 	store.mu.RUnlock()
 	
 	wsStats := map[string]interface{}{}
@@ -1127,24 +1258,248 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+func searchUsers(w http.ResponseWriter, r *http.Request) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	
+	query := strings.ToLower(r.URL.Query().Get("q"))
+	country := r.URL.Query().Get("country")
+	activeStr := r.URL.Query().Get("active")
+	
+	var results []User
+	for _, user := range store.users {
+		if query != "" {
+			if !strings.Contains(strings.ToLower(user.Name), query) &&
+			   !strings.Contains(strings.ToLower(user.Email), query) {
+				continue
+			}
+		}
+		
+		if country != "" && user.Country != country {
+			continue
+		}
+		
+		if activeStr != "" {
+			active, _ := strconv.ParseBool(activeStr)
+			if user.Active != active {
+				continue
+			}
+		}
+		
+		results = append(results, user)
+	}
+	
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"results": results,
+		"count":   len(results),
+	})
+}
+
+func batchCreateUsers(w http.ResponseWriter, r *http.Request) {
+	var req BatchCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+	
+	if len(req.Users) == 0 {
+		respondError(w, http.StatusBadRequest, "No users provided")
+		return
+	}
+	
+	if len(req.Users) > 100 {
+		respondError(w, http.StatusBadRequest, "Maximum 100 users per batch")
+		return
+	}
+	
+	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
+	
+	var createdUsers []User
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	
+	for _, userReq := range req.Users {
+		if userReq.Name == "" || userReq.Email == "" {
+			continue
+		}
+		
+		if !emailRegex.MatchString(strings.ToLower(userReq.Email)) {
+			continue
+		}
+		
+		now := time.Now()
+		user := User{
+			ID:        store.nextID,
+			Name:      userReq.Name,
+			Email:     userReq.Email,
+			Age:       userReq.Age,
+			Country:   userReq.Country,
+			Active:    true,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+		
+		store.users[store.nextID] = user
+		createdUsers = append(createdUsers, user)
+		store.nextID++
+	}
+	
+	respondJSON(w, http.StatusCreated, map[string]interface{}{
+		"created": createdUsers,
+		"count":   len(createdUsers),
+	})
+}
+
+func batchDeleteUsers(w http.ResponseWriter, r *http.Request) {
+	var req BatchDeleteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+	
+	if len(req.IDs) == 0 {
+		respondError(w, http.StatusBadRequest, "No IDs provided")
+		return
+	}
+	
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	
+	var deleted []int
+	for _, id := range req.IDs {
+		if _, exists := store.users[id]; exists {
+			delete(store.users, id)
+			deleted = append(deleted, id)
+		}
+	}
+	
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"deleted": deleted,
+		"count":   len(deleted),
+	})
+}
+
+func activateUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+	
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	
+	user, exists := store.users[id]
+	if !exists {
+		respondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+	
+	user.Active = true
+	user.UpdatedAt = time.Now()
+	store.users[id] = user
+	
+	respondJSON(w, http.StatusOK, user)
+}
+
+func deactivateUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid ID")
+		return
+	}
+	
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	
+	user, exists := store.users[id]
+	if !exists {
+		respondError(w, http.StatusNotFound, "User not found")
+		return
+	}
+	
+	user.Active = false
+	user.UpdatedAt = time.Now()
+	store.users[id] = user
+	
+	respondJSON(w, http.StatusOK, user)
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	store.mu.RLock()
+	totalUsers := len(store.users)
+	activeUsers := 0
+	for _, user := range store.users {
+		if user.Active {
+			activeUsers++
+		}
+	}
+	store.mu.RUnlock()
+	
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":       "healthy",
+		"timestamp":    time.Now(),
+		"uptime":       time.Since(store.stats.StartTime).String(),
+		"total_users":  totalUsers,
+		"active_users": activeUsers,
+	})
+}
+
 func initTestData() {
+	now := time.Now()
 	store.users[1] = User{
 		ID:        1,
 		Name:      "Иван Петров",
 		Email:     "ivan@example.com",
-		CreatedAt: time.Now(),
+		Age:       30,
+		Country:   "Russia",
+		Active:    true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	store.users[2] = User{
 		ID:        2,
 		Name:      "Мария Сидорова",
 		Email:     "maria@example.com",
-		CreatedAt: time.Now(),
+		Age:       25,
+		Country:   "Russia",
+		Active:    true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	store.users[3] = User{
 		ID:        3,
 		Name:      "Петр Иванов",
 		Email:     "petr@example.com",
-		CreatedAt: time.Now(),
+		Age:       35,
+		Country:   "Ukraine",
+		Active:    false,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
-	store.nextID = 4
+	store.users[4] = User{
+		ID:        4,
+		Name:      "John Smith",
+		Email:     "john@example.com",
+		Age:       28,
+		Country:   "USA",
+		Active:    true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	store.users[5] = User{
+		ID:        5,
+		Name:      "Anna Schmidt",
+		Email:     "anna@example.com",
+		Age:       32,
+		Country:   "Germany",
+		Active:    true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	store.nextID = 6
+	
+	store.stats.UsersByCountry = make(map[string]int)
 }
