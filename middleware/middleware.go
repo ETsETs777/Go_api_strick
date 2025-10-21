@@ -128,12 +128,20 @@ func (rl *RequestLogger) Middleware(next http.Handler) http.Handler {
 		fmt.Printf("→ [%d] %s %s %s %s - Started\n", 
 			requestID, time.Now().Format("15:04:05"), r.Method, r.RequestURI, r.RemoteAddr)
 		
+		// Add request ID to context
+		ctx := context.WithValue(r.Context(), "request_id", requestID)
+		ctx = context.WithValue(ctx, "start_time", start)
+		r = r.WithContext(ctx)
+		
 		next.ServeHTTP(rw, r)
 		
 		duration := time.Since(start)
 		fmt.Printf("← [%d] %s %s %s - %d %s (%d bytes) - %v\n", 
 			requestID, time.Now().Format("15:04:05"), r.Method, r.RequestURI, 
 			rw.status, http.StatusText(rw.status), rw.size, duration)
+		
+		// Store duration in context for performance tracking
+		w.Header().Set("X-Response-Time", duration.String())
 	})
 }
 

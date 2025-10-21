@@ -67,15 +67,33 @@ type Stats struct {
 	TotalUsers      int            `json:"total_users"`
 	ActiveUsers     int            `json:"active_users"`
 	UsersByCountry  map[string]int `json:"users_by_country"`
+	RequestsByPath  map[string]int `json:"requests_by_path"`
+	AvgResponseTime float64        `json:"avg_response_time_ms"`
 	StartTime       time.Time      `json:"start_time"`
 	Uptime          string         `json:"uptime"`
 }
+
+type PerformanceMetrics struct {
+	Path         string
+	Count        int
+	TotalTime    time.Duration
+	AverageTime  time.Duration
+	MinTime      time.Duration
+	MaxTime      time.Duration
+}
+
+var (
+	metrics      = make(map[string]*PerformanceMetrics)
+	metricsMutex sync.RWMutex
+)
 
 var store = &Store{
 	users:  make(map[int]User),
 	nextID: 1,
 	stats: Stats{
-		StartTime: time.Now(),
+		StartTime:      time.Now(),
+		RequestsByPath: make(map[string]int),
+		UsersByCountry: make(map[string]int),
 	},
 }
 
@@ -119,6 +137,7 @@ func StartServer() {
 	router.HandleFunc("/api/users/{id}/deactivate", deactivateUser).Methods("PATCH")
 	router.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE")
 	router.HandleFunc("/api/stats", getStats).Methods("GET")
+	router.HandleFunc("/api/metrics", getMetrics).Methods("GET")
 	router.HandleFunc("/api/health", healthCheck).Methods("GET")
 	router.HandleFunc("/ws", handleWebSocket)
 	router.HandleFunc("/", homeHandler).Methods("GET")
@@ -819,6 +838,107 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         input::placeholder {
             color: #666666;
         }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin: 30px 0;
+            border-bottom: 2px solid #2a2a2a;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 14px 28px;
+            background: transparent;
+            color: #999999;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .tab:hover {
+            color: #ffffff;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+        }
+        
+        .tab.active {
+            color: #ffffff;
+            border-bottom-color: #ffffff;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid #2a2a2a;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .metric-card h4 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .metric-label {
+            color: #999999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .copy-btn {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #cccccc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #3a3a3a;
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
@@ -831,37 +951,57 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             <p class="subtitle">Advanced Features & Production-Ready Patterns</p>
         </div>
         
-        <div class="grid">
-            <div class="feature-card">
-                <h3>🔌 WebSocket</h3>
-                <p>Real-time двунаправленная коммуникация с клиентами</p>
-            </div>
-            <div class="feature-card">
-                <h3>⚡ Rate Limiting</h3>
-                <p>Защита от перегрузки: 10 req/s, burst 20</p>
-            </div>
-            <div class="feature-card">
-                <h3>🛡️ Security</h3>
-                <p>CORS, Security Headers, Recovery middleware</p>
-            </div>
-            <div class="feature-card">
-                <h3>🔄 Graceful Shutdown</h3>
-                <p>Корректное завершение всех соединений</p>
-            </div>
-        </div>
-
-        <h2>🔌 WebSocket Live Demo</h2>
-        <div class="ws-demo">
-            <div id="status" class="ws-status disconnected">❌ Отключено</div>
-            <button onclick="connectWS()">Подключиться</button>
-            <button onclick="disconnectWS()">Отключиться</button>
-            <button onclick="sendMessage()">Отправить тестовое сообщение</button>
-            <br>
-            <input type="text" id="messageInput" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter')sendCustomMessage()">
-            <button onclick="sendCustomMessage()">Отправить</button>
-            <div id="messages"></div>
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">📊 Overview</button>
+            <button class="tab" onclick="showTab('api')">📋 API Docs</button>
+            <button class="tab" onclick="showTab('tester')">🧪 Tester</button>
+            <button class="tab" onclick="showTab('metrics')">⚡ Metrics</button>
+            <button class="tab" onclick="showTab('websocket')">🔌 WebSocket</button>
         </div>
         
+        <div id="overview" class="tab-content active">
+            <div class="grid">
+                <div class="feature-card">
+                    <h3>🔌 WebSocket</h3>
+                    <p>Real-time двунаправленная коммуникация с клиентами</p>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ Rate Limiting</h3>
+                    <p>Защита от перегрузки: 10 req/s, burst 20</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🛡️ Security</h3>
+                    <p>CORS, Security Headers, Recovery middleware</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔄 Graceful Shutdown</h3>
+                    <p>Корректное завершение всех соединений</p>
+                </div>
+            </div>
+            
+            <h2>💡 All Features</h2>
+            <ul style="line-height: 2; margin: 20px; font-size: 1.1em; columns: 2; column-gap: 40px;">
+                <li>✅ <strong>Pagination</strong> - страничный вывод данных</li>
+                <li>✅ <strong>Sorting</strong> - сортировка по полям</li>
+                <li>✅ <strong>Search & Filter</strong> - поиск и фильтрация</li>
+                <li>✅ <strong>Batch Operations</strong> - массовые операции</li>
+                <li>✅ <strong>Export</strong> - экспорт в JSON/CSV</li>
+                <li>✅ <strong>Analytics</strong> - детальная статистика</li>
+                <li>✅ <strong>Email Validation</strong> - проверка формата</li>
+                <li>✅ <strong>Age Validation</strong> - диапазон 0-150</li>
+                <li>✅ <strong>WebSocket</strong> - real-time коммуникация</li>
+                <li>✅ <strong>Rate Limiting</strong> - 10 req/s, burst 20</li>
+                <li>✅ <strong>CORS</strong> - кросс-доменные запросы</li>
+                <li>✅ <strong>Security Headers</strong> - CSP, HSTS, X-Frame</li>
+                <li>✅ <strong>Graceful Shutdown</strong> - корректное завершение</li>
+                <li>✅ <strong>Structured Logging</strong> - детальные логи</li>
+                <li>✅ <strong>Recovery Middleware</strong> - обработка паники</li>
+                <li>✅ <strong>Performance Metrics</strong> - отслеживание производительности</li>
+            </ul>
+        </div>
+        
+        <div id="api" class="tab-content">
+
         <h2>📋 REST API Endpoints</h2>
         
         <h3 style="color: #cccccc; margin: 30px 0 20px 0;">📄 User Management</h3>
@@ -966,6 +1106,14 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             <p style="margin-top: 10px;">WebSocket real-time communication</p>
         </div>
         
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/api/metrics</code>
+            <p style="margin-top: 10px;">Performance metrics (response times, request counts)</p>
+        </div>
+        </div>
+        
+        <div id="tester" class="tab-content">
         <h2>🧪 Interactive API Tester</h2>
         <div class="ws-demo">
             <h3 style="margin-bottom: 15px;">📥 Export Users</h3>
@@ -982,26 +1130,29 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             <button onclick="searchUsersAPI()">Search</button>
             <div id="searchResults" style="margin-top: 15px;"></div>
         </div>
+        </div>
         
-        <h2>💡 All Features</h2>
-        <ul style="line-height: 2; margin: 20px; font-size: 1.1em; columns: 2; column-gap: 40px;">
-            <li>✅ <strong>Pagination</strong> - страничный вывод данных</li>
-            <li>✅ <strong>Sorting</strong> - сортировка по полям</li>
-            <li>✅ <strong>Search & Filter</strong> - поиск и фильтрация</li>
-            <li>✅ <strong>Batch Operations</strong> - массовые операции</li>
-            <li>✅ <strong>Export</strong> - экспорт в JSON/CSV</li>
-            <li>✅ <strong>Analytics</strong> - детальная статистика</li>
-            <li>✅ <strong>Email Validation</strong> - проверка формата</li>
-            <li>✅ <strong>Age Validation</strong> - диапазон 0-150</li>
-            <li>✅ <strong>WebSocket</strong> - real-time коммуникация</li>
-            <li>✅ <strong>Rate Limiting</strong> - 10 req/s, burst 20</li>
-            <li>✅ <strong>CORS</strong> - кросс-доменные запросы</li>
-            <li>✅ <strong>Security Headers</strong> - CSP, HSTS, X-Frame</li>
-            <li>✅ <strong>Graceful Shutdown</strong> - корректное завершение</li>
-            <li>✅ <strong>Structured Logging</strong> - детальные логи</li>
-            <li>✅ <strong>Recovery Middleware</strong> - обработка паники</li>
-            <li>✅ <strong>Advanced Patterns</strong> - Pipeline, Fan-Out/In</li>
-        </ul>
+        <div id="metrics" class="tab-content">
+        <h2>⚡ Performance Metrics</h2>
+        <div class="ws-demo">
+            <button onclick="loadMetrics()">🔄 Refresh Metrics</button>
+            <div id="metricsDisplay" style="margin-top: 20px;"></div>
+        </div>
+        </div>
+        
+        <div id="websocket" class="tab-content">
+        <h2>🔌 WebSocket Live Demo</h2>
+        <div class="ws-demo">
+            <div id="status" class="ws-status disconnected">❌ Отключено</div>
+            <button onclick="connectWS()">Подключиться</button>
+            <button onclick="disconnectWS()">Отключиться</button>
+            <button onclick="sendMessage()">Отправить тестовое сообщение</button>
+            <br>
+            <input type="text" id="messageInput" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter')sendCustomMessage()">
+            <button onclick="sendCustomMessage()">Отправить</button>
+            <div id="messages"></div>
+        </div>
+        </div>
     </div>
 
     <script>
@@ -1139,6 +1290,43 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
                 }
             } catch (error) {
                 document.getElementById('searchResults').innerHTML = '<p style="color: #ff6666;">Error: ' + error.message + '</p>';
+            }
+        }
+        
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        async function loadMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                const metricsDiv = document.getElementById('metricsDisplay');
+                
+                if (data.metrics && data.metrics.length > 0) {
+                    let html = '<div class="metrics-grid">';
+                    data.metrics.forEach(metric => {
+                        html += '<div class="metric-card">';
+                        html += '<h4>' + metric.path + '</h4>';
+                        html += '<div class="metric-value">' + metric.count + '</div>';
+                        html += '<div class="metric-label">Requests</div>';
+                        html += '<div style="margin-top: 15px;">';
+                        html += '<div style="color: #cccccc; font-size: 0.9em;">Avg: ' + metric.avg_time_ms.toFixed(2) + 'ms</div>';
+                        html += '<div style="color: #999999; font-size: 0.85em;">Min: ' + metric.min_time_ms.toFixed(2) + 'ms | Max: ' + metric.max_time_ms.toFixed(2) + 'ms</div>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    metricsDiv.innerHTML = html;
+                } else {
+                    metricsDiv.innerHTML = '<div class="example">No metrics available yet. Make some API requests first!</div>';
+                }
+            } catch (error) {
+                document.getElementById('metricsDisplay').innerHTML = '<p style="color: #ff6666;">Error: ' + error.message + '</p>';
             }
         }
     </script>
@@ -1717,13 +1905,65 @@ func getUserAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"total_users":    totalUsers,
-		"active_users":   activeUsers,
-		"inactive_users": inactiveUsers,
+		"total_users":      totalUsers,
+		"active_users":     activeUsers,
+		"inactive_users":   inactiveUsers,
 		"users_by_country": byCountry,
-		"average_age":    avgAge,
-		"timestamp":      time.Now(),
+		"average_age":      avgAge,
+		"timestamp":        time.Now(),
 	})
+}
+
+func getMetrics(w http.ResponseWriter, r *http.Request) {
+	metricsMutex.RLock()
+	defer metricsMutex.RUnlock()
+	
+	result := make([]map[string]interface{}, 0, len(metrics))
+	for path, m := range metrics {
+		result = append(result, map[string]interface{}{
+			"path":         path,
+			"count":        m.Count,
+			"avg_time_ms":  float64(m.AverageTime.Microseconds()) / 1000.0,
+			"min_time_ms":  float64(m.MinTime.Microseconds()) / 1000.0,
+			"max_time_ms":  float64(m.MaxTime.Microseconds()) / 1000.0,
+			"total_time_s": m.TotalTime.Seconds(),
+		})
+	}
+	
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"metrics":   result,
+		"timestamp": time.Now(),
+	})
+}
+
+func trackPerformance(path string, duration time.Duration) {
+	metricsMutex.Lock()
+	defer metricsMutex.Unlock()
+	
+	m, exists := metrics[path]
+	if !exists {
+		m = &PerformanceMetrics{
+			Path:    path,
+			MinTime: duration,
+			MaxTime: duration,
+		}
+		metrics[path] = m
+	}
+	
+	m.Count++
+	m.TotalTime += duration
+	m.AverageTime = m.TotalTime / time.Duration(m.Count)
+	
+	if duration < m.MinTime {
+		m.MinTime = duration
+	}
+	if duration > m.MaxTime {
+		m.MaxTime = duration
+	}
+	
+	store.mu.Lock()
+	store.stats.RequestsByPath[path]++
+	store.mu.Unlock()
 }
 
 func initTestData() {
