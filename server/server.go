@@ -162,11 +162,18 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             --dark: #0a0a0a;
             --light: #f5f5f5;
             --border: #2a2a2a;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+            --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.8);
+            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.9);
         }
         
         body {
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
+            background: #000000;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
             min-height: 100vh;
             padding: 20px;
             position: relative;
@@ -185,37 +192,72 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         
         .particle {
             position: absolute;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 50%;
-            animation: float 20s infinite;
+            animation: float 20s infinite ease-in-out;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
         }
         
         @keyframes float {
-            0%, 100% { transform: translateY(0) translateX(0); }
-            25% { transform: translateY(-100px) translateX(50px); }
-            50% { transform: translateY(-200px) translateX(-50px); }
-            75% { transform: translateY(-100px) translateX(100px); }
+            0%, 100% { 
+                transform: translateY(0) translateX(0) scale(1); 
+                opacity: 0.3;
+            }
+            25% { 
+                transform: translateY(-100px) translateX(50px) scale(1.2); 
+                opacity: 0.6;
+            }
+            50% { 
+                transform: translateY(-200px) translateX(-50px) scale(0.8); 
+                opacity: 0.4;
+            }
+            75% { 
+                transform: translateY(-100px) translateX(100px) scale(1.1); 
+                opacity: 0.5;
+            }
         }
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: #1a1a1a;
-            border-radius: 30px;
-            padding: 50px;
-            box-shadow: 0 30px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-radius: 40px;
+            padding: 60px;
+            box-shadow: 
+                0 50px 100px rgba(0,0,0,0.9),
+                0 0 0 1px rgba(255,255,255,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.05);
             position: relative;
             z-index: 10;
-            animation: slideUp 0.8s ease-out;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 40px;
+            padding: 2px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
         }
         
         @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(50px);
+                transform: translateY(60px) scale(0.95);
+                filter: blur(10px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1);
+                filter: blur(0);
             }
         }
         .header {
@@ -257,8 +299,14 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             font-size: 3.5em;
             font-weight: 700;
             margin-bottom: 15px;
-            letter-spacing: -1px;
-            text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+            letter-spacing: -2px;
+            text-shadow: 
+                0 0 40px rgba(255, 255, 255, 0.15),
+                0 2px 4px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
         .subtitle {
@@ -269,13 +317,31 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         }
         h2 {
             color: #ffffff;
-            margin: 40px 0 25px 0;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #333333;
+            margin: 50px 0 30px 0;
+            padding-bottom: 20px;
+            border-bottom: 2px solid transparent;
+            background: linear-gradient(90deg, #333333 0%, transparent 100%) bottom / 100% 2px no-repeat;
             font-size: 2em;
             font-weight: 600;
             position: relative;
-            animation: slideInLeft 0.6s ease-out;
+            animation: slideInLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            letter-spacing: -0.5px;
+        }
+        
+        h2::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 80px;
+            height: 2px;
+            background: linear-gradient(90deg, #ffffff 0%, transparent 100%);
+            animation: slideWidth 1s ease-out;
+        }
+        
+        @keyframes slideWidth {
+            from { width: 0; }
+            to { width: 80px; }
         }
         
         @keyframes slideInLeft {
@@ -296,13 +362,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         }
         
         .feature-card {
-            background: #000000;
-            padding: 35px;
-            border-radius: 20px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+            padding: 40px;
+            border-radius: 24px;
             border: 1px solid #2a2a2a;
             color: white;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: var(--shadow-md);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
             position: relative;
             overflow: hidden;
             cursor: pointer;
@@ -315,39 +381,68 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255,255,255,0.03);
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.08) 0%, transparent 50%);
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.5s;
+        }
+        
+        .feature-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.05) 180deg, transparent 360deg);
+            animation: rotate 8s linear infinite;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
         }
         
         .feature-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
-            border-color: #404040;
+            transform: translateY(-12px) scale(1.03);
+            box-shadow: 
+                var(--shadow-xl),
+                0 0 0 1px rgba(255,255,255,0.1);
+            border-color: #505050;
         }
         
         .feature-card:hover::before {
             opacity: 1;
         }
         
+        .feature-card:hover::after {
+            opacity: 1;
+        }
+        
         .feature-card h3 {
-            margin-bottom: 15px;
-            font-size: 1.7em;
+            margin-bottom: 18px;
+            font-size: 1.8em;
             font-weight: 600;
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
         }
         
         .feature-card p {
             font-weight: 300;
-            line-height: 1.6;
+            line-height: 1.7;
+            color: #cccccc;
+            position: relative;
+            z-index: 1;
         }
         .endpoint {
-            background: #0a0a0a;
-            padding: 25px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #050505 100%);
+            padding: 28px;
             margin: 20px 0;
-            border-radius: 15px;
+            border-radius: 18px;
             border: 1px solid #2a2a2a;
             border-left: 4px solid #ffffff;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             position: relative;
             overflow: hidden;
         }
@@ -359,90 +454,173 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             left: 0;
             width: 4px;
             height: 100%;
-            background: #ffffff;
-            transition: width 0.3s ease;
+            background: linear-gradient(180deg, #ffffff 0%, #999999 100%);
+            transition: all 0.4s ease;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
         }
         
         .endpoint:hover {
-            transform: translateX(5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border-color: #404040;
+            transform: translateX(8px);
+            box-shadow: 
+                var(--shadow-lg),
+                -4px 0 20px rgba(255,255,255,0.05);
+            border-color: #505050;
         }
         
         .endpoint:hover::before {
             width: 100%;
-            opacity: 0.02;
+            opacity: 0.03;
         }
         .method {
             display: inline-block;
-            padding: 8px 20px;
-            border-radius: 25px;
+            padding: 10px 24px;
+            border-radius: 30px;
             font-weight: 700;
             margin-right: 15px;
             color: white;
-            font-size: 0.95em;
+            font-size: 0.9em;
             font-family: 'JetBrains Mono', monospace;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-            letter-spacing: 0.5px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .method::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
         }
         
         .method:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .method:hover::before {
+            width: 300px;
+            height: 300px;
         }
         
         .get {
-            background: #ffffff;
+            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
             color: #000000;
+            box-shadow: 0 4px 15px rgba(255,255,255,0.1);
         }
+        
+        .get:hover {
+            background: linear-gradient(135deg, #e0e0e0 0%, #ffffff 100%);
+        }
+        
         .post {
-            background: #000000;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
             color: #ffffff;
             border: 1px solid #404040;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+        
+        .post:hover {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+        }
+        
         .put {
-            background: #333333;
+            background: linear-gradient(135deg, #333333 0%, #404040 100%);
             color: #ffffff;
+            box-shadow: 0 4px 15px rgba(51,51,51,0.3);
         }
+        
+        .put:hover {
+            background: linear-gradient(135deg, #404040 0%, #505050 100%);
+        }
+        
         .delete {
-            background: #666666;
+            background: linear-gradient(135deg, #666666 0%, #808080 100%);
             color: #ffffff;
+            box-shadow: 0 4px 15px rgba(102,102,102,0.3);
         }
+        
+        .delete:hover {
+            background: linear-gradient(135deg, #808080 0%, #999999 100%);
+        }
+        
         .ws {
-            background: #1a1a1a;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
             color: #ffffff;
-            border: 1px solid #404040;
+            border: 1px solid #505050;
+            box-shadow: 0 4px 15px rgba(26,26,26,0.4);
+        }
+        
+        .ws:hover {
+            background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
         }
         code {
-            background: #000000;
-            color: #cccccc;
-            padding: 6px 12px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+            color: #e0e0e0;
+            padding: 8px 14px;
+            border-radius: 10px;
             font-family: 'JetBrains Mono', 'Courier New', monospace;
             font-size: 0.95em;
             border: 1px solid #2a2a2a;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 
+                var(--shadow-sm),
+                inset 0 1px 0 rgba(255,255,255,0.03);
+            letter-spacing: 0.3px;
         }
+        
         .example {
-            background: #000000;
-            color: #cccccc;
-            padding: 25px;
-            border-radius: 15px;
+            background: linear-gradient(135deg, #000000 0%, #0a0a0a 100%);
+            color: #d0d0d0;
+            padding: 28px;
+            border-radius: 18px;
             margin: 20px 0;
             font-family: 'JetBrains Mono', 'Courier New', monospace;
-            box-shadow: inset 0 2px 15px rgba(0,0,0,0.8);
+            box-shadow: 
+                inset 0 2px 15px rgba(0,0,0,0.9),
+                0 4px 20px rgba(0,0,0,0.6);
             border: 1px solid #2a2a2a;
             overflow-x: auto;
-            line-height: 1.6;
+            line-height: 1.7;
+            position: relative;
+        }
+        
+        .example::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
         }
         .ws-demo {
-            background: #0a0a0a;
-            padding: 30px;
-            border-radius: 20px;
-            margin: 25px 0;
+            background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+            padding: 35px;
+            border-radius: 24px;
+            margin: 30px 0;
             border: 1px solid #2a2a2a;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ws-demo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 50%);
+            pointer-events: none;
         }
         
         .ws-status {
@@ -456,16 +634,24 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         }
         
         .connected {
-            background: #ffffff;
+            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
             color: #000000;
-            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
-            animation: pulse 2s infinite;
+            box-shadow: 
+                0 8px 24px rgba(255, 255, 255, 0.15),
+                0 0 30px rgba(255, 255, 255, 0.1);
+            animation: pulse 2s infinite, glow 2s ease-in-out infinite;
+            font-weight: 700;
         }
         
         .disconnected {
-            background: #333333;
-            color: #ffffff;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(135deg, #333333 0%, #2a2a2a 100%);
+            color: #999999;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15), 0 0 30px rgba(255, 255, 255, 0.1); }
+            50% { box-shadow: 0 8px 24px rgba(255, 255, 255, 0.25), 0 0 40px rgba(255, 255, 255, 0.2); }
         }
         #messages {
             max-height: 400px;
@@ -515,20 +701,21 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             }
         }
         button {
-            background: #ffffff;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
             color: #000000;
             border: 1px solid #2a2a2a;
-            padding: 14px 30px;
-            border-radius: 12px;
+            padding: 14px 32px;
+            border-radius: 14px;
             cursor: pointer;
             font-size: 16px;
             font-weight: 600;
             font-family: 'Poppins', sans-serif;
             margin: 8px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: var(--shadow-sm);
             position: relative;
             overflow: hidden;
+            letter-spacing: 0.3px;
         }
         
         button::before {
@@ -550,31 +737,38 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         }
         
         button:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: #404040;
         }
         
         button:active {
-            transform: translateY(-1px) scale(1.02);
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: var(--shadow-sm);
         }
         input {
-            padding: 14px 20px;
+            padding: 14px 22px;
             border: 1px solid #2a2a2a;
-            border-radius: 12px;
+            border-radius: 14px;
             width: 350px;
             margin: 8px;
             font-family: 'Poppins', sans-serif;
             font-size: 15px;
-            transition: all 0.3s ease;
-            background: #0a0a0a;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: linear-gradient(135deg, #0a0a0a 0%, #050505 100%);
             color: #ffffff;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
         }
         
         input:focus {
             outline: none;
             border-color: #ffffff;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, #0f0f0f 0%, #0a0a0a 100%);
+            box-shadow: 
+                0 0 0 4px rgba(255,255,255,0.08),
+                inset 0 2px 10px rgba(0,0,0,0.5),
+                0 8px 24px rgba(255,255,255,0.05);
             transform: translateY(-2px);
         }
         
@@ -665,17 +859,29 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
     <script>
         const particlesContainer = document.getElementById('particles');
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 60; i++) {
             const particle = document.createElement('div');
             particle.className = 'particle';
-            particle.style.width = Math.random() * 10 + 5 + 'px';
-            particle.style.height = particle.style.width;
+            const size = Math.random() * 6 + 2;
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
             particle.style.left = Math.random() * 100 + '%';
             particle.style.top = Math.random() * 100 + '%';
             particle.style.animationDelay = Math.random() * 20 + 's';
-            particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+            particle.style.animationDuration = (Math.random() * 15 + 15) + 's';
+            particle.style.opacity = Math.random() * 0.5 + 0.2;
             particlesContainer.appendChild(particle);
         }
+        
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                card.style.setProperty('--mouse-x', x + '%');
+                card.style.setProperty('--mouse-y', y + '%');
+            });
+        });
         
         let ws = null;
         

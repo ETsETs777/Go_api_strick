@@ -32,4 +32,5 @@ Thumbs.db
 test_file.txt
 *.db
 *.sqlite
+go_installer.msi
 
