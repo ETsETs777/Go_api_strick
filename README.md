@@ -1,88 +1,86 @@
 # 🚀 Go Language Showcase
 
-Комплексный проект, демонстрирующий все основные возможности языка программирования Go.
+A comprehensive project demonstrating all major features of the Go programming language.
 
-## 📋 Содержание
+## 📋 Table of Contents
 
-Этот проект включает примеры и демонстрации следующих возможностей Go:
+This project includes examples and demonstrations of the following Go features:
 
-### 1. **Типы данных** (`types/`)
-- Базовые типы (int, float, string, bool, complex)
-- Структуры (structs)
-- Массивы и срезы (arrays & slices)
-- Ассоциативные массивы (maps)
-- Константы и переменные
+### 1. **Data Types** (`types/`)
+- Basic types (int, float, string, bool, complex)
+- Structs
+- Arrays & slices
+- Maps
+- Constants and variables
 
-### 2. **Интерфейсы** (`interfaces/`)
-- Определение и реализация интерфейсов
-- Полиморфизм
-- Type assertions и type switches
-- Обработка ошибок (error interface)
-- Кастомные ошибки
+### 2. **Interfaces** (`interfaces/`)
+- Interface definition and implementation
+- Polymorphism
+- Type assertions and type switches
+- Error handling (error interface)
+- Custom errors
 
-### 3. **Конкурентность** (`concurrency/`)
-- Горутины (goroutines)
-- Каналы (channels)
-- Буферизованные и небуферизованные каналы
+### 3. **Concurrency** (`concurrency/`)
+- Goroutines
+- Channels
+- Buffered and unbuffered channels
 - Select statement
-- Worker Pool паттерн
-- Мьютексы и синхронизация (sync.Mutex, sync.WaitGroup)
+- Worker Pool pattern
+- Mutexes and synchronization (sync.Mutex, sync.WaitGroup)
 
-### 4. **Дженерики** (`generics/`)
-- Дженерик функции
-- Дженерик структуры (Stack, Map)
-- Ограничения типов (type constraints)
-- Параметризованные типы
+### 4. **Generics** (`generics/`)
+- Generic functions
+- Generic structs (Stack, Map)
+- Type constraints
+- Parameterized types
 
-### 5. **Рефлексия** (`reflection/`)
-- Получение типов и значений
-- Инспекция структур
-- Работа с тегами (struct tags)
-- Изменение значений через рефлексию
-- Вызов методов динамически
+### 5. **Reflection** (`reflection/`)
+- Getting types and values
+- Struct inspection
+- Working with struct tags
+- Modifying values through reflection
+- Calling methods dynamically
 
-### 6. **База данных** (`database/`)
-- Работа с SQLite
-- CRUD операции
-- Транзакции
+### 6. **Database** (`database/`)
+- Working with SQLite
+- CRUD operations
+- Transactions
 - Prepared statements
-- Экспорт данных в JSON
+- JSON data export
 
-### 7. **HTTP Сервер** (`server/`)
-- REST API с Gorilla Mux
-- WebSocket для real-time коммуникации
+### 7. **HTTP Server** (`server/`)
+- REST API with Gorilla Mux
+- WebSocket for real-time communication
 - Rate Limiting (10 req/s)
 - CORS middleware
 - Security Headers
 - Graceful Shutdown
 - Structured Logging
 - JSON encoding/decoding
-- Красивый монохромный веб-интерфейс
+- Beautiful monochrome web interface
 
-### 8. **Продвинутые паттерны конкурентности** (`advanced/`)
+### 8. **Advanced Concurrency Patterns** (`advanced/`)
 - Pipeline Pattern
 - Fan-Out/Fan-In Pattern
 - Circuit Breaker Pattern
 - Semaphore Pattern
-- In-Memory Cache с TTL
+- In-Memory Cache with TTL
 
-### 8. **Прочие возможности** (`main.go`)
+### 9. **Other Features** (`main.go`)
 - Defer, panic, recover
-- Работа с файлами (чтение, запись)
-- Context (с таймаутом и отменой)
-- Управление памятью
+- File operations (read, write)
+- Context (with timeout and cancellation)
+- Memory management
 
-## 🔧 Установка
+## 🔧 Installation
 
-### Шаг 1: Установка Go
+### Step 1: Install Go
 
 #### Windows
-1. Установщик уже скачан в файл `go_installer.msi`
-2. Запустите установщик (двойной клик)
-3. Следуйте инструкциям мастера установки
-4. После установки откройте новое окно терминала
-
-Или скачайте вручную с официального сайта: https://go.dev/dl/
+1. Download Go from the official website: https://go.dev/dl/
+2. Run the installer (double-click the `.msi` file)
+3. Follow the installation wizard instructions
+4. After installation, open a new terminal window
 
 #### Linux
 ```bash
@@ -96,105 +94,105 @@ export PATH=$PATH:/usr/local/go/bin
 brew install go
 ```
 
-### Шаг 2: Проверка установки
+### Step 2: Verify Installation
 ```bash
 go version
 ```
 
-Вы должны увидеть что-то вроде: `go version go1.21.5 windows/amd64`
+You should see something like: `go version go1.21.5 windows/amd64`
 
-### Шаг 3: Установка зависимостей проекта
+### Step 3: Install Project Dependencies
 ```bash
 go mod download
 ```
 
-## 🚀 Запуск
+## 🚀 Usage
 
-### Запуск всего проекта
+### Run the Entire Project
 ```bash
 go run main.go
 ```
 
-Это запустит все демонстрации последовательно и в конце запустит HTTP сервер.
+This will run all demonstrations sequentially and finally start the HTTP server.
 
-### Запуск только HTTP сервера
-После запуска `go run main.go`, HTTP сервер будет доступен по адресу:
+### HTTP Server
+After running `go run main.go`, the HTTP server will be available at:
 ```
 http://localhost:8080
 ```
 
-Откройте браузер и перейдите по этому адресу, чтобы увидеть красивый веб-интерфейс с документацией API.
+Open your browser and navigate to this address to see the beautiful web interface with API documentation.
 
 ### API Endpoints
 
-- `GET /api/users` - Получить список всех пользователей
-- `GET /api/users/{id}` - Получить пользователя по ID
-- `POST /api/users` - Создать нового пользователя
-- `PUT /api/users/{id}` - Обновить пользователя
-- `DELETE /api/users/{id}` - Удалить пользователя
-- `GET /api/stats` - Получить статистику сервера
-- `WS /ws` - WebSocket подключение для real-time коммуникации
+- `GET /api/users` - Get all users
+- `GET /api/users/{id}` - Get user by ID
+- `POST /api/users` - Create a new user
+- `PUT /api/users/{id}` - Update a user
+- `DELETE /api/users/{id}` - Delete a user
+- `GET /api/stats` - Get server statistics
+- `WS /ws` - WebSocket connection for real-time communication
 
-### Примеры использования API
+### API Usage Examples
 
-#### Получить всех пользователей
+#### Get All Users
 ```bash
 curl http://localhost:8080/api/users
 ```
 
-#### Создать пользователя
+#### Create a User
 ```bash
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
-  -d '{"name":"Анна Иванова","email":"anna@example.com"}'
+  -d '{"name":"Anna Ivanova","email":"anna@example.com"}'
 ```
 
-#### Получить пользователя по ID
+#### Get User by ID
 ```bash
 curl http://localhost:8080/api/users/1
 ```
 
-#### Обновить пользователя
+#### Update a User
 ```bash
 curl -X PUT http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
-  -d '{"name":"Новое имя","email":"new@example.com"}'
+  -d '{"name":"New Name","email":"new@example.com"}'
 ```
 
-#### Удалить пользователя
+#### Delete a User
 ```bash
 curl -X DELETE http://localhost:8080/api/users/1
 ```
 
-#### Получить статистику
+#### Get Statistics
 ```bash
 curl http://localhost:8080/api/stats
 ```
 
-## 📦 Структура проекта
+## 📦 Project Structure
 
 ```
 go-showcase/
-├── main.go                 # Главный файл приложения
-├── go.mod                  # Файл зависимостей
-├── go.sum                  # Хэши зависимостей
-├── README.md               # Этот файл
-├── .gitignore              # Git игнорируемые файлы
-├── types/                  # Демонстрация типов данных
+├── main.go                 # Main application file
+├── go.mod                  # Dependencies file
+├── go.sum                  # Dependencies checksums
+├── README.md               # This file
+├── .gitignore              # Git ignore file
+├── types/                  # Data types demonstration
 │   └── basic_types.go
-├── interfaces/             # Интерфейсы и обработка ошибок
+├── interfaces/             # Interfaces and error handling
 │   └── interfaces.go
-├── concurrency/            # Горутины и каналы
+├── concurrency/            # Goroutines and channels
 │   └── concurrency.go
-├── generics/               # Дженерики (Go 1.18+)
+├── generics/               # Generics (Go 1.18+)
 │   └── generics.go
-├── reflection/             # Рефлексия
+├── reflection/             # Reflection
 │   └── reflection.go
-├── database/               # Работа с БД
+├── database/               # Database operations
 │   └── database.go
-├── server/                 # HTTP сервер
+├── server/                 # HTTP server
 │   └── server.go
-├── advanced/               # Продвинутые паттерны
+├── advanced/               # Advanced patterns
 │   └── patterns.go
 ├── middleware/             # HTTP middleware
 │   └── middleware.go
@@ -202,61 +200,61 @@ go-showcase/
     └── hub.go
 ```
 
-## 🎯 Что демонстрирует проект
+## 🎯 What This Project Demonstrates
 
-### Базовые концепции
-- ✅ Типы данных и переменные
-- ✅ Структуры и методы
-- ✅ Интерфейсы и полиморфизм
-- ✅ Массивы, срезы и карты
-- ✅ Указатели
+### Basic Concepts
+- ✅ Data types and variables
+- ✅ Structs and methods
+- ✅ Interfaces and polymorphism
+- ✅ Arrays, slices, and maps
+- ✅ Pointers
 
-### Продвинутые возможности
-- ✅ Горутины и каналы
+### Advanced Features
+- ✅ Goroutines and channels
 - ✅ Select statement
-- ✅ Мьютексы и синхронизация
-- ✅ Дженерики (Go 1.18+)
-- ✅ Рефлексия
+- ✅ Mutexes and synchronization
+- ✅ Generics (Go 1.18+)
+- ✅ Reflection
 - ✅ Context
 
-### Практическое применение
-- ✅ HTTP сервер с REST API
-- ✅ Работа с базой данных (SQLite)
+### Practical Applications
+- ✅ HTTP server with REST API
+- ✅ Database operations (SQLite)
 - ✅ JSON encoding/decoding
-- ✅ Файловые операции
+- ✅ File operations
 - ✅ Middleware
 - ✅ Error handling
 
-### Паттерны и лучшие практики
+### Patterns and Best Practices
 - ✅ Worker Pool
 - ✅ Dependency Injection
 - ✅ Error wrapping
 - ✅ Defer, panic, recover
 - ✅ Package organization
 
-## 📚 Дополнительные ресурсы
+## 📚 Additional Resources
 
-- [Официальная документация Go](https://go.dev/doc/)
+- [Official Go Documentation](https://go.dev/doc/)
 - [Go by Example](https://gobyexample.com/)
 - [Effective Go](https://go.dev/doc/effective_go)
 - [Go Tour](https://go.dev/tour/)
 
-## 🤝 Вклад
+## 🤝 Contributing
 
-Этот проект создан в образовательных целях для демонстрации возможностей Go.
+This project was created for educational purposes to demonstrate Go capabilities.
 
-## 📝 Лицензия
+## 📝 License
 
-MIT License - используйте код свободно для обучения и практики!
+MIT License - feel free to use this code for learning and practice!
 
-## ⚡ Быстрый старт
+## ⚡ Quick Start
 
-1. Установите Go (используйте `go_installer.msi` или скачайте с go.dev)
-2. Клонируйте или скачайте этот проект
-3. Откройте терминал в папке проекта
-4. Выполните: `go mod download`
-5. Запустите: `go run main.go`
-6. Откройте браузер: `http://localhost:8080`
+1. Install Go (download from go.dev)
+2. Clone or download this project
+3. Open terminal in the project folder
+4. Run: `go mod download`
+5. Start: `go run main.go`
+6. Open browser: `http://localhost:8080`
 
-Наслаждайтесь изучением Go! 🎉
+Enjoy learning Go! 🎉
 
