@@ -111,6 +111,8 @@ func StartServer() {
 	router.HandleFunc("/api/users/batch", batchCreateUsers).Methods("POST")
 	router.HandleFunc("/api/users/batch", batchDeleteUsers).Methods("DELETE")
 	router.HandleFunc("/api/users/search", searchUsers).Methods("GET")
+	router.HandleFunc("/api/users/export", exportUsers).Methods("GET")
+	router.HandleFunc("/api/users/analytics", getUserAnalytics).Methods("GET")
 	router.HandleFunc("/api/users/{id}", getUser).Methods("GET")
 	router.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")
 	router.HandleFunc("/api/users/{id}/activate", activateUser).Methods("PATCH")
@@ -862,40 +864,143 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
         
         <h2>📋 REST API Endpoints</h2>
         
+        <h3 style="color: #cccccc; margin: 30px 0 20px 0;">📄 User Management</h3>
+        
         <div class="endpoint">
             <span class="method get">GET</span>
-            <code>/api/users</code>
-            <p style="margin-top: 10px;">Получить список всех пользователей</p>
+            <code>/api/users?page=1&per_page=10&sort=name&order=asc</code>
+            <p style="margin-top: 10px;">Get paginated users with sorting</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/api/users/{id}</code>
+            <p style="margin-top: 10px;">Get single user by ID</p>
         </div>
         
         <div class="endpoint">
             <span class="method post">POST</span>
             <code>/api/users</code>
-            <p style="margin-top: 10px;">Создать нового пользователя</p>
+            <p style="margin-top: 10px;">Create new user (name, email, age, country)</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method put">PUT</span>
+            <code>/api/users/{id}</code>
+            <p style="margin-top: 10px;">Update user information</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method delete">DELETE</span>
+            <code>/api/users/{id}</code>
+            <p style="margin-top: 10px;">Delete user</p>
+        </div>
+        
+        <h3 style="color: #cccccc; margin: 30px 0 20px 0;">🔍 Search & Filter</h3>
+        
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/api/users/search?q=john&country=USA&active=true</code>
+            <p style="margin-top: 10px;">Search users by name, email, country, and status</p>
+        </div>
+        
+        <h3 style="color: #cccccc; margin: 30px 0 20px 0;">🔄 Batch Operations</h3>
+        
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/api/users/batch</code>
+            <p style="margin-top: 10px;">Create multiple users at once (max 100)</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method delete">DELETE</span>
+            <code>/api/users/batch</code>
+            <p style="margin-top: 10px;">Delete multiple users by IDs</p>
+        </div>
+        
+        <h3 style="color: #cccccc; margin: 30px 0 20px 0;">⚡ User Actions</h3>
+        
+        <div class="endpoint">
+            <span class="method put">PATCH</span>
+            <code>/api/users/{id}/activate</code>
+            <p style="margin-top: 10px;">Activate user</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method put">PATCH</span>
+            <code>/api/users/{id}/deactivate</code>
+            <p style="margin-top: 10px;">Deactivate user</p>
+        </div>
+        
+        <h3 style="color: #cccccc; margin: 30px 0 20px 0;">📊 Analytics & Export</h3>
+        
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/api/users/analytics</code>
+            <p style="margin-top: 10px;">Get user analytics (by country, age, status)</p>
         </div>
         
         <div class="endpoint">
             <span class="method get">GET</span>
+            <code>/api/users/export?format=csv</code>
+            <p style="margin-top: 10px;">Export users as JSON or CSV</p>
+        </div>
+        
+        <h3 style="color: #cccccc; margin: 30px 0 20px 0;">🔧 System</h3>
+        
+        <div class="endpoint">
+            <span class="method get">GET</span>
             <code>/api/stats</code>
-            <p style="margin-top: 10px;">Статистика сервера</p>
+            <p style="margin-top: 10px;">Server statistics with user breakdown</p>
+        </div>
+        
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/api/health</code>
+            <p style="margin-top: 10px;">Health check endpoint</p>
         </div>
         
         <div class="endpoint">
             <span class="method ws">WS</span>
             <code>/ws</code>
-            <p style="margin-top: 10px;">WebSocket endpoint для real-time коммуникации</p>
+            <p style="margin-top: 10px;">WebSocket real-time communication</p>
         </div>
         
-        <h2>💡 Новые возможности</h2>
-        <ul style="line-height: 2; margin: 20px; font-size: 1.1em;">
-            <li>✅ <strong>WebSocket</strong> - двунаправленная real-time коммуникация</li>
-            <li>✅ <strong>Rate Limiting</strong> - защита от перегрузки API</li>
+        <h2>🧪 Interactive API Tester</h2>
+        <div class="ws-demo">
+            <h3 style="margin-bottom: 15px;">📥 Export Users</h3>
+            <button onclick="window.open('/api/users/export?format=json', '_blank')">Export as JSON</button>
+            <button onclick="window.open('/api/users/export?format=csv', '_blank')">Export as CSV</button>
+            
+            <h3 style="margin: 25px 0 15px 0;">📊 View Analytics</h3>
+            <button onclick="fetchAnalytics()">Get Analytics</button>
+            <div id="analytics" style="margin-top: 15px;"></div>
+            
+            <h3 style="margin: 25px 0 15px 0;">🔍 Search Users</h3>
+            <input type="text" id="searchQuery" placeholder="Search by name or email...">
+            <input type="text" id="searchCountry" placeholder="Filter by country...">
+            <button onclick="searchUsersAPI()">Search</button>
+            <div id="searchResults" style="margin-top: 15px;"></div>
+        </div>
+        
+        <h2>💡 All Features</h2>
+        <ul style="line-height: 2; margin: 20px; font-size: 1.1em; columns: 2; column-gap: 40px;">
+            <li>✅ <strong>Pagination</strong> - страничный вывод данных</li>
+            <li>✅ <strong>Sorting</strong> - сортировка по полям</li>
+            <li>✅ <strong>Search & Filter</strong> - поиск и фильтрация</li>
+            <li>✅ <strong>Batch Operations</strong> - массовые операции</li>
+            <li>✅ <strong>Export</strong> - экспорт в JSON/CSV</li>
+            <li>✅ <strong>Analytics</strong> - детальная статистика</li>
+            <li>✅ <strong>Email Validation</strong> - проверка формата</li>
+            <li>✅ <strong>Age Validation</strong> - диапазон 0-150</li>
+            <li>✅ <strong>WebSocket</strong> - real-time коммуникация</li>
+            <li>✅ <strong>Rate Limiting</strong> - 10 req/s, burst 20</li>
             <li>✅ <strong>CORS</strong> - кросс-доменные запросы</li>
-            <li>✅ <strong>Security Headers</strong> - X-Frame-Options, CSP, HSTS</li>
+            <li>✅ <strong>Security Headers</strong> - CSP, HSTS, X-Frame</li>
             <li>✅ <strong>Graceful Shutdown</strong> - корректное завершение</li>
-            <li>✅ <strong>Structured Logging</strong> - детальное логирование запросов</li>
+            <li>✅ <strong>Structured Logging</strong> - детальные логи</li>
             <li>✅ <strong>Recovery Middleware</strong> - обработка паники</li>
-            <li>✅ <strong>Продвинутые паттерны</strong> - Pipeline, Fan-Out/Fan-In, Circuit Breaker</li>
+            <li>✅ <strong>Advanced Patterns</strong> - Pipeline, Fan-Out/In</li>
         </ul>
     </div>
 
@@ -999,6 +1104,43 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
             messagesDiv.appendChild(messageEl);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
+        
+        async function fetchAnalytics() {
+            try {
+                const response = await fetch('/api/users/analytics');
+                const data = await response.json();
+                const analyticsDiv = document.getElementById('analytics');
+                analyticsDiv.innerHTML = '<div class="example">' + JSON.stringify(data, null, 2) + '</div>';
+            } catch (error) {
+                document.getElementById('analytics').innerHTML = '<p style="color: #ff6666;">Error: ' + error.message + '</p>';
+            }
+        }
+        
+        async function searchUsersAPI() {
+            const query = document.getElementById('searchQuery').value;
+            const country = document.getElementById('searchCountry').value;
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (country) params.append('country', country);
+            
+            try {
+                const response = await fetch('/api/users/search?' + params.toString());
+                const data = await response.json();
+                const resultsDiv = document.getElementById('searchResults');
+                if (data.results && data.results.length > 0) {
+                    let html = '<div class="example"><strong>Found ' + data.count + ' users:</strong><br><br>';
+                    data.results.forEach(user => {
+                        html += user.id + '. ' + user.name + ' (' + user.email + ') - ' + user.country + ', Age: ' + user.age + ', Active: ' + user.active + '<br>';
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<p style="color: #999999;">No users found</p>';
+                }
+            } catch (error) {
+                document.getElementById('searchResults').innerHTML = '<p style="color: #ff6666;">Error: ' + error.message + '</p>';
+            }
+        }
     </script>
 </body>
 </html>`
@@ -1012,6 +1154,8 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	
 	page := 1
 	perPage := 10
+	sortBy := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
 	
 	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
 		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
@@ -1028,6 +1172,66 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	allUsers := make([]User, 0, len(store.users))
 	for _, user := range store.users {
 		allUsers = append(allUsers, user)
+	}
+	
+	// Sort users
+	if sortBy != "" {
+		switch sortBy {
+		case "name":
+			if order == "desc" {
+				for i := 0; i < len(allUsers); i++ {
+					for j := i + 1; j < len(allUsers); j++ {
+						if allUsers[i].Name < allUsers[j].Name {
+							allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+						}
+					}
+				}
+			} else {
+				for i := 0; i < len(allUsers); i++ {
+					for j := i + 1; j < len(allUsers); j++ {
+						if allUsers[i].Name > allUsers[j].Name {
+							allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+						}
+					}
+				}
+			}
+		case "age":
+			if order == "desc" {
+				for i := 0; i < len(allUsers); i++ {
+					for j := i + 1; j < len(allUsers); j++ {
+						if allUsers[i].Age < allUsers[j].Age {
+							allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+						}
+					}
+				}
+			} else {
+				for i := 0; i < len(allUsers); i++ {
+					for j := i + 1; j < len(allUsers); j++ {
+						if allUsers[i].Age > allUsers[j].Age {
+							allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+						}
+					}
+				}
+			}
+		case "created":
+			if order == "desc" {
+				for i := 0; i < len(allUsers); i++ {
+					for j := i + 1; j < len(allUsers); j++ {
+						if allUsers[i].CreatedAt.Before(allUsers[j].CreatedAt) {
+							allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+						}
+					}
+				}
+			} else {
+				for i := 0; i < len(allUsers); i++ {
+					for j := i + 1; j < len(allUsers); j++ {
+						if allUsers[i].CreatedAt.After(allUsers[j].CreatedAt) {
+							allUsers[i], allUsers[j] = allUsers[j], allUsers[i]
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	total := len(allUsers)
@@ -1444,6 +1648,81 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 		"uptime":       time.Since(store.stats.StartTime).String(),
 		"total_users":  totalUsers,
 		"active_users": activeUsers,
+	})
+}
+
+func exportUsers(w http.ResponseWriter, r *http.Request) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+	
+	allUsers := make([]User, 0, len(store.users))
+	for _, user := range store.users {
+		allUsers = append(allUsers, user)
+	}
+	
+	switch format {
+	case "csv":
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=users.csv")
+		
+		fmt.Fprintf(w, "ID,Name,Email,Age,Country,Active,Created At,Updated At\n")
+		for _, user := range allUsers {
+			fmt.Fprintf(w, "%d,%s,%s,%d,%s,%t,%s,%s\n",
+				user.ID, user.Name, user.Email, user.Age, user.Country, user.Active,
+				user.CreatedAt.Format(time.RFC3339), user.UpdatedAt.Format(time.RFC3339))
+		}
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=users.json")
+		json.NewEncoder(w).Encode(allUsers)
+	}
+}
+
+func getUserAnalytics(w http.ResponseWriter, r *http.Request) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	
+	totalUsers := len(store.users)
+	activeUsers := 0
+	inactiveUsers := 0
+	byCountry := make(map[string]int)
+	avgAge := 0
+	ageSum := 0
+	ageCount := 0
+	
+	for _, user := range store.users {
+		if user.Active {
+			activeUsers++
+		} else {
+			inactiveUsers++
+		}
+		
+		if user.Country != "" {
+			byCountry[user.Country]++
+		}
+		
+		if user.Age > 0 {
+			ageSum += user.Age
+			ageCount++
+		}
+	}
+	
+	if ageCount > 0 {
+		avgAge = ageSum / ageCount
+	}
+	
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"total_users":    totalUsers,
+		"active_users":   activeUsers,
+		"inactive_users": inactiveUsers,
+		"users_by_country": byCountry,
+		"average_age":    avgAge,
+		"timestamp":      time.Now(),
 	})
 }
 
